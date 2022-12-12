@@ -1,0 +1,97 @@
+/* libproxy-version.h.in
+ *
+ * Copyright 2022 Jan-Michael Brummer
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ * SPDX-License-Identifier: LGPL-2.1-or-later
+ */
+
+#pragma once
+
+#if !defined(LIBPROXY_INSIDE) && !defined(LIBPROXY_COMPILATION)
+# error "Only <libproxy.h> can be included directly."
+#endif
+
+/**
+ * SECTION:libproxyversion
+ * @short_description: libproxy version checking
+ *
+ * libproxy provides macros to check the version of the library
+ * at compile-time
+ */
+
+/**
+ * LIBPROXY_MAJOR_VERSION:
+ *
+ * libproxy major version component (e.g. 1 if %LIBPROXY_VERSION is 1.2.3)
+ */
+#define LIBPROXY_MAJOR_VERSION (@MAJOR_VERSION@)
+
+/**
+ * LIBPROXY_MINOR_VERSION:
+ *
+ * libproxy minor version component (e.g. 2 if %LIBPROXY_VERSION is 1.2.3)
+ */
+#define LIBPROXY_MINOR_VERSION (@MINOR_VERSION@)
+
+/**
+ * LIBPROXY_MICRO_VERSION:
+ *
+ * libproxy micro version component (e.g. 3 if %LIBPROXY_VERSION is 1.2.3)
+ */
+#define LIBPROXY_MICRO_VERSION (@MICRO_VERSION@)
+
+/**
+ * LIBPROXY_VERSION
+ *
+ * libproxy version.
+ */
+#define LIBPROXY_VERSION (@VERSION@)
+
+/**
+ * LIBPROXY_VERSION_S:
+ *
+ * libproxy version, encoded as a string, useful for printing and
+ * concatenation.
+ */
+#define LIBPROXY_VERSION_S "@VERSION@"
+
+#define LIBPROXY_ENCODE_VERSION(major,minor,micro) \
+        ((major) << 24 | (minor) << 16 | (micro) << 8)
+
+/**
+ * LIBPROXY_VERSION_HEX:
+ *
+ * libproxy version, encoded as an hexadecimal number, useful for
+ * integer comparisons.
+ */
+#define LIBPROXY_VERSION_HEX \
+        (LIBPROXY_ENCODE_VERSION (LIBPROXY_MAJOR_VERSION, LIBPROXY_MINOR_VERSION, LIBPROXY_MICRO_VERSION))
+
+/**
+ * LIBPROXY_CHECK_VERSION:
+ * @major: required major version
+ * @minor: required minor version
+ * @micro: required micro version
+ *
+ * Compile-time version checking. Evaluates to %TRUE if the version
+ * of libproxy is greater than the required one.
+ */
+#define LIBPROXY_CHECK_VERSION(major,minor,micro)   \
+        (LIBPROXY_MAJOR_VERSION > (major) || \
+         (LIBPROXY_MAJOR_VERSION == (major) && LIBPROXY_MINOR_VERSION > (minor)) || \
+         (LIBPROXY_MAJOR_VERSION == (major) && LIBPROXY_MINOR_VERSION == (minor) && \
+          LIBPROXY_MICRO_VERSION >= (micro)))

@@ -1,0 +1,30 @@
+if get_option('tests')
+  envs = [
+    'G_TEST_SRCDIR=' + meson.current_source_dir(),
+    'G_TEST_BUILDDIR=' + meson.current_build_dir(),
+  ]
+
+  test_cargs = ['-UG_DISABLE_ASSERT']
+
+  px_manager_test = executable('test-px-manager',
+    ['px-manager-test.c', 'px-manager-helper.c'],
+    include_directories: px_backend_inc,
+    link_with: px_backend_lib,
+    dependencies: [soup_dep, glib_dep],
+  )
+  test('PX Manager test',
+       px_manager_test,
+       env: envs
+  )
+
+  config_env_test = executable('test-config-env',
+    ['config-env-test.c', 'px-manager-helper.c'],
+    include_directories: px_backend_inc,
+    link_with: px_backend_lib,
+    dependencies: [glib_dep],
+  )
+  test('Config Environment test',
+       config_env_test,
+       env: envs
+  )
+endif

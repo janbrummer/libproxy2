@@ -1,0 +1,15 @@
+option('docs',
+       type: 'boolean', value: false,
+       description: 'Whether to generate the API reference for libproxy')
+
+option('tests',
+       type: 'boolean', value: false,
+       description: 'Whether to compile test cases for libproxy')
+
+option('introspection',
+       type: 'boolean', value: false,
+       description: 'Whether to use gobject introspection')
+
+option('dbus',
+       type: 'boolean', value: true,
+       description: 'Whether to build dbus service')
