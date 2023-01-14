@@ -20,7 +20,6 @@
 
 #include <gio/gio.h>
 
-#include "px-manager.h"
 #include "proxy.h"
 
 /**
@@ -31,7 +30,7 @@
  */
 
 struct px_proxy_factory {
-  PxManager *manager;
+  GDBusProxy *proxy;
   GCancellable *cancellable;
 };
 
@@ -48,7 +47,16 @@ px_proxy_factory_new (void)
   struct px_proxy_factory *self = g_malloc0 (sizeof (struct px_proxy_factory));
 
   self->cancellable = g_cancellable_new ();
-  self->manager = px_manager_new ();
+  self->proxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
+                                               G_DBUS_PROXY_FLAGS_NONE,
+                                               NULL, /* GDBusInterfaceInfo */
+                                               "org.libproxy.proxy",
+                                               "/org/libproxy/proxy",
+                                               "org.libproxy.proxy",
+                                               self->cancellable, /* GCancellable */
+                                               &error);
+  if (!self->proxy)
+    g_warning ("Could not create libproxy dbus proxy: %s", error->message);
 
   return self;
 }
@@ -67,8 +75,15 @@ px_proxy_factory_get_proxies (struct px_proxy_factory *self,
   gsize len;
   gsize idx;
 
+  result = g_dbus_proxy_call_sync (self->proxy,
+                                   "query",
+                                   g_variant_new ("(s)", url),
+                                   G_DBUS_CALL_FLAGS_NONE,
+                                   -1,
+                                   self->cancellable,
+                                   &error);
   if (!result) {
-    g_warning ("Could not query proxy dbus: %s", error ? error->message : "");
+    g_warning ("Could not query proxy dbus: %s", error->message);
     return NULL;
   }
 
@@ -112,6 +127,6 @@ px_proxy_factory_free (struct px_proxy_factory *self)
 {
   g_cancellable_cancel (self->cancellable);
   g_clear_object (&self->cancellable);
-  g_clear_object (&self->manager);
+  g_clear_object (&self->proxy);
   g_clear_pointer (&self, g_free);
 }

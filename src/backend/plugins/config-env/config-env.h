@@ -1,4 +1,4 @@
-/* px-config-module.h
+/* config-env.h
  *
  * Copyright 2022-2023 Jan-Michael Brummer
  *
@@ -21,22 +21,14 @@
 
 #pragma once
 
-typedef struct _PxConfigModule PxConfigModule;
-typedef struct _PxConfigModuleInterface PxConfigModuleInterface;
+#include <glib.h>
 
-struct _PxConfigModuleInterface {
-  GTypeInterface parent;
+G_BEGIN_DECLS
 
-  const char *name;
-  long version;
+#define PX_CONFIG_TYPE_ENV         (px_config_env_get_type ())
 
-  gboolean (*check_available) (void);
-  GStrv (*get_config) (PxModule *px_module, GUri *uri, GError **error);
-};
+G_DECLARE_FINAL_TYPE (PxConfigEnv, px_config_env, PX, CONFIG_ENV, GObject)
 
-#define PX_TYPE_CONFIG_MODULE (px_config_module_get_type ())
-#define PX_IS_CONFIG_MODULE(o) (G_TYPE_CHECK_INSTANCE_TYPE ((o), PX_TYPE_CONFIG_MODULE))
-#define PX_CONFIG_MODULE(o) (G_TYPE_CHECK_INSTANCE_CAST ((o), PX_TYPE_CONFIG_MODULE, PxConfigModule))
-#define PX_CONFIG_MODULE_GET_INTERFACE(o) (G_TYPE_INSTANCE_GET_INTERFACE((o), PX_TYPE_CONFIG_MODULE, PxConfigModuleInterface))
+G_END_DECLS
 
-GType px_config_module_get_type (void);
+

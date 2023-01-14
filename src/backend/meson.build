@@ -3,15 +3,17 @@ api_version = '1.0'
 px_backend_sources = [
   'px-manager.c',
   'px-manager.h',
-  'px-module.c',
-  'px-module.h',
+  'px-plugin-config.c',
+  'px-plugin-config.h',
+  'px-plugin-pacrunner.c',
+  'px-plugin-pacrunner.h',
 ]
 
 px_backend_deps = [
   gio_dep,
-  gmodule_dep,
   glib_dep,
-  soup_dep
+  soup_dep,
+  peas_dep,
 ]
 
 px_backend_inc = include_directories('.')
@@ -38,7 +40,7 @@ px_gir = gnome.generate_gir(px_backend_lib_dyn,
               install: true,
 )
 
-subdir('modules')
+subdir('plugins')
 
 if get_option('dbus')
   gdbus_codegen = find_program('gdbus-codegen')

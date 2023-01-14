@@ -47,8 +47,8 @@ test_config_env (void)
 {
   int idx;
 
-  /* Overwrite libproxy configuration module */
-  g_setenv ("PX_CONFIG_MODULE", "Environment", TRUE);
+  /* Overwrite libproxy configuration plugin */
+  g_setenv ("PX_CONFIG_PLUGIN", "config_env", TRUE);
 
   for (idx = 0; idx < G_N_ELEMENTS (config_env_test_set); idx++) {
     g_autoptr (PxManager) manager = NULL;
@@ -70,6 +70,8 @@ test_config_env (void)
     }
 
     config = px_manager_get_configuration (manager, uri, &error);
+    /* GMainLoop *loop = g_main_loop_new (NULL, TRUE); */
+    /* g_main_loop_run(loop); */
     if (config) {
       if (test.success)
         g_assert_cmpstr (config[0], ==, test.proxy);

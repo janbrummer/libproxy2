@@ -1,6 +1,6 @@
-/* config-gnome.h
+/* pacrunner-duktape.h
  *
- * Copyright 2022 Jan-Michael Brummer
+ * Copyright 2022-2023 Jan-Michael Brummer
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -25,15 +25,8 @@
 
 G_BEGIN_DECLS
 
-#define PX_TYPE_GNOME_MODULE px_gnome_module_get_type ()
+#define PX_PACRUNNER_TYPE_DUKTAPE         (px_pacrunner_duktape_get_type ())
 
-G_DECLARE_FINAL_TYPE (PxGnomeModule, px_gnome_module, PX, GNOME_MODULE, GObject)
-
-struct _PxGnomeModuleClass
-{
-  GObjectClass parent_class;
-};
+G_DECLARE_FINAL_TYPE (PxPacRunnerDuktape, px_pacrunner_duktape, PX, PACRUNNER_DUKTAPE, GObject)
 
 G_END_DECLS
-
-

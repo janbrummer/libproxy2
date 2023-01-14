@@ -22,12 +22,12 @@
 #include "config.h"
 
 #include "px-manager.h"
-#include "px-module.h"
-#include "px-config-module.h"
-#include "px-pacrunner-module.h"
+/* #include "px-pacrunner-module.h" */
+#include "px-plugin-config.h"
+#include "px-plugin-pacrunner.h"
 
-#include <gio/gio.h>
 #include <libsoup/soup.h>
+#include <libpeas/peas.h>
 
 enum {
   PROP_0,
@@ -45,7 +45,9 @@ static GParamSpec *obj_properties[LAST_PROP];
 
 struct _PxManager {
   GObject parent_instance;
-  GList *modules;
+  PeasEngine *engine;
+  PeasExtensionSet *config_set;
+  PeasExtensionSet *pacrunner_set;
   char *module_path;
   GCancellable *cancellable;
   SoupSession *session;
@@ -59,46 +61,34 @@ static void
 px_manager_constructed (GObject *object)
 {
   PxManager *self = PX_MANAGER (object);
-  g_autoptr (GFile) module_dir = g_file_new_for_path (self->module_path);
-  g_autoptr (GError) error = NULL;
-  GFileEnumerator *enumerator;
+  const GList *list;
 
-  if (!module_dir) {
-    g_warning ("Error accessing module path: %s. Abort!", g_file_peek_path (module_dir));
-    return;
-  }
+  self->session = soup_session_new ();
 
-  enumerator = g_file_enumerate_children (module_dir,
-                                          G_FILE_ATTRIBUTE_STANDARD_NAME,
-                                          G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                          self->cancellable,
-                                          NULL);
+  self->engine = peas_engine_get_default ();
+  self->config_set = peas_extension_set_new (self->engine, PX_TYPE_CONFIG, NULL);
+  self->pacrunner_set = peas_extension_set_new (self->engine, PX_TYPE_PACRUNNER, NULL);
 
-  if (!enumerator) {
-    g_warning ("Error enumerating module path: %s. Abort!", g_file_peek_path (module_dir));
-    return;
-  }
+  peas_engine_add_search_path (self->engine, self->module_path, NULL);
 
-  g_print ("Loading modules from %s\n", self->module_path);
+  list = peas_engine_get_plugin_list (self->engine);
+  for (; list && list->data; list = list->next) {
+    PeasPluginInfo *info = PEAS_PLUGIN_INFO (list->data);
+    PeasExtension *extension = peas_extension_set_get_extension (self->config_set, info);
+    gboolean available = TRUE;
 
-  while (TRUE) {
-    GFileInfo *info;
-    GFile *child;
-    PxModule *module;
+    if (!peas_plugin_info_is_loaded (info))
+      peas_engine_load_plugin (self->engine, info);
 
-    if (!g_file_enumerator_iterate (enumerator, &info, &child, NULL, &error)) {
-      g_warning ("Error enumerating module directory: %s", error->message);
-      break;
+    extension = peas_extension_set_get_extension (self->config_set, info);
+    if (extension) {
+      PxConfigInterface *ifc = PX_CONFIG_GET_IFACE (extension);
+
+      available = ifc->is_available(PX_CONFIG (extension));
     }
 
-    if (!info)
-      break;
-
-    if (!g_str_has_suffix (g_file_peek_path (child), ".so"))
-      continue;
-
-    module = px_module_load (child, info, self);
-    self->modules = g_list_append (self->modules, module);
+    if (!available)
+      peas_engine_unload_plugin (self->engine, info);
   }
 }
 
@@ -110,8 +100,7 @@ px_manager_dispose (GObject *object)
   g_cancellable_cancel (self->cancellable);
   g_clear_object (&self->cancellable);
   g_clear_pointer (&self->module_path, g_free);
-
-  g_clear_list (&self->modules, g_object_unref);
+  g_clear_object (&self->engine);
 
   G_OBJECT_CLASS (px_manager_parent_class)->dispose (object);
 }
@@ -158,6 +147,8 @@ px_manager_class_init (PxManagerClass *klass)
   object_class->set_property = px_manager_set_property;
   object_class->get_property = px_manager_get_property;
 
+  /* klass->get_config = px_manager_get_config; */
+
   obj_properties[PROP_MODULE_PATH] = g_param_spec_string ("module-path",
                                                           "Module Path",
                                                           "The path where modules are stored.",
@@ -170,7 +161,7 @@ px_manager_class_init (PxManagerClass *klass)
 static void
 px_manager_init (PxManager *self)
 {
-  self->session = soup_session_new ();
+
 }
 
 /**
@@ -204,26 +195,38 @@ px_manager_pac_download (PxManager  *self,
   g_autoptr (GBytes) bytes = NULL;
 
   g_print ("%s: ENTER %s\n", __FUNCTION__, uri);
-#if SOUP_CHECK_VERSION (2, 99, 4)
   bytes = soup_session_send_and_read (
     self->session,
     msg,
     NULL,     /* Pass a GCancellable here if you want to cancel a download */
     &error);
-#else
-  soup_session_send_message (self->session, msg);
-  bytes = g_bytes_new_static (msg->response_body->data, msg->response_body->length);
-#endif
   if (!bytes) {
     g_debug ("Failed to download: %s\n", error ? error->message : "");
     g_warning ("Cannot download pac file: %s", error ? error->message : "");
     return NULL;
   }
 
-  /* g_debug ("Downloaded %zu bytes\n", g_bytes_get_size (bytes)); */
-  /* g_print ("Data: %s\n", (char*)g_bytes_get_data (bytes, NULL)); */
-
   return g_steal_pointer (&bytes);
+}
+
+struct ConfigData {
+  GUri *uri;
+  char **ret;
+  GError **error;
+};
+
+static void
+get_config (PeasExtensionSet *set,
+            PeasPluginInfo   *info,
+            PeasExtension    *extension,
+            gpointer          data)
+{
+  PxConfigInterface *ifc = PX_CONFIG_GET_IFACE (extension);
+  struct ConfigData *config_data = data;
+
+  g_print ("%s: ENTER\n", __FUNCTION__);
+  if (!config_data->ret)
+    config_data->ret = ifc->get_config (PX_CONFIG (extension), config_data->uri, config_data->error);
 }
 
 /**
@@ -234,42 +237,47 @@ px_manager_pac_download (PxManager  *self,
  *
  * Get raw proxy configuration for gien @uri.
  *
- * Returns: (nullable): a newly created `GStrb` containing configuration data for @uri.
+ * Returns: (nullable): a newly created `GStrv` containing configuration data for @uri.
  */
 char **
 px_manager_get_configuration (PxManager  *self,
                               GUri       *uri,
                               GError    **error)
 {
-  g_auto (GStrv) config = NULL;
-  GList *list = self->modules;
-  const char *requested_config_module;
+  struct ConfigData a = {
+    .uri = uri,
+    .error = error,
+  };
 
-  requested_config_module = g_getenv ("PX_CONFIG_MODULE");
+  g_print ("%s: ENTER\n", __FUNCTION__);
+  peas_extension_set_foreach (self->config_set, get_config, &a);
+  if (a.ret && *a.ret)
+    g_print ("Got: %s\n", *a.ret);
+  return a.ret;
+}
 
-  for (; list && list->data; list = list->next) {
-    PxModule *module = PX_MODULE (list->data);
-    PxConfigModule *conf_module = NULL;
-    PxConfigModuleInterface *iface = NULL;
+struct PacData {
+  char *pac;
+  GUri *uri;
+  char *ret;
+};
 
-    if (!PX_IS_CONFIG_MODULE (module))
-      continue;
+static void
+parse_pac (PeasExtensionSet *set,
+           PeasPluginInfo   *info,
+           PeasExtension    *extension,
+           gpointer          data)
+{
+  PxPacRunnerInterface *ifc = PX_PAC_RUNNER_GET_IFACE (extension);
+  struct PacData *pac_data = data;
 
-    if (requested_config_module && g_strcmp0 (requested_config_module, px_module_get_name (module)) != 0)
-      continue;
+  g_print ("%s: ENTER\n", __FUNCTION__);
 
-    /* First config module wins at the moment */
-    conf_module = PX_CONFIG_MODULE (module);
-    iface = PX_CONFIG_MODULE_GET_INTERFACE (conf_module);
+  if (pac_data->ret)
+    return;
 
-    if (!iface->check_available ())
-      continue;
-
-    config = iface->get_config (module, uri, error);
-    return g_steal_pointer (&config);
-  }
-
-  return NULL;
+  ifc->set_pac (PX_PAC_RUNNER (extension), pac_data->pac);
+  pac_data->ret = ifc->run (PX_PAC_RUNNER (extension), pac_data->uri);
 }
 
 /**
@@ -293,6 +301,7 @@ px_manager_get_proxies_sync (PxManager   *self,
   char *pac;
   GBytes *pac_bytes;
   GTimer *timer;
+  struct PacData pac_data;
 
   timer = g_timer_new ();
   if (!uri)
@@ -302,30 +311,38 @@ px_manager_get_proxies_sync (PxManager   *self,
   if (!config)
     return NULL;
 
+  /* ret = g_steal_pointer (&config); */
+
   pac_bytes = px_manager_pac_download (self, config[0]);
   pac = g_strdup (g_bytes_get_data (pac_bytes, NULL));
 
   g_debug ("PAC loaded: %f\n", g_timer_elapsed (timer, NULL));
 
-  for (list = self->modules; list && list->data; list = list->next) {
-    PxModule *module = PX_MODULE (list->data);
+  pac_data.pac = pac;
+  pac_data.uri = uri;
+  pac_data.ret = NULL;
+  peas_extension_set_foreach (self->pacrunner_set, parse_pac, &pac_data);
+  /* for (list = self->modules; list && list->data; list = list->next) { */
+  /*   PxModule *module = PX_MODULE (list->data); */
 
     /* First pacrunner module wins at the moment */
-    if (PX_IS_PACRUNNER_MODULE (module)) {
-      PxPacrunnerModule *pacrunner_module = PX_PACRUNNER_MODULE (module);
-      PxPacrunnerModuleInterface *iface = PX_PACRUNNER_MODULE_GET_INTERFACE (pacrunner_module);
-      char *pac_ret;
+  /*   if (PX_IS_PACRUNNER_MODULE (module)) { */
+  /*     PxPacrunnerModule *pacrunner_module = PX_PACRUNNER_MODULE (module); */
+  /*     PxPacrunnerModuleInterface *iface = PX_PACRUNNER_MODULE_GET_INTERFACE (pacrunner_module); */
+  /*     char *pac_ret; */
 
-      iface->set_pac (module, pac);
-      g_debug ("PAC set: %f\n", g_timer_elapsed (timer, NULL));
-      pac_ret = iface->run (module, uri);
+  /*     iface->set_pac (module, pac); */
+  /*     g_debug ("PAC set: %f\n", g_timer_elapsed (timer, NULL)); */
+  /*     pac_ret = iface->run (module, uri); */
 
-      ret = g_malloc0 (sizeof (char *) * 2);
-      ret[0] = g_strdup (pac_ret);
-      break;
-    }
-  }
-  g_debug ("PAC parsed: %f\n", g_timer_elapsed (timer, NULL));
-
+  /*     ret = g_malloc0 (sizeof (char *) * 2); */
+  /*     ret[0] = g_strdup (pac_ret); */
+  /*     break; */
+  /*   } */
+  /* } */
+  g_print ("PAC parsed: %f\n", g_timer_elapsed (timer, NULL));
+  g_print ("Got: %s\n", pac_data.ret);
+  ret = g_malloc0 (sizeof (char *) * 2);
+  ret[0] = g_strdup (pac_data.ret);
   return g_steal_pointer (&ret);
 }

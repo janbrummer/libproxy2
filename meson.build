@@ -6,6 +6,9 @@ project('libproxy', 'c',
 
 cc = meson.get_compiler('c')
 
+root_dir = include_directories('.')
+copyfile_script = find_program('copyfile.py')
+
 px_prefix = get_option('prefix')
 px_libdir = join_paths(px_prefix, get_option('libdir'))
 px_module_dir = join_paths(px_libdir, meson.project_name().to_lower(), 'modules')
@@ -99,7 +102,7 @@ with_platform_windows = _platforms.contains('windows')
 
 glib_dep = dependency('glib-2.0', version: '>= 2.71.3')
 gio_dep = dependency('gio-2.0', version: '>= 2.71.3')
-gmodule_dep = dependency('gmodule-2.0')
+peas_dep = dependency('libpeas-1.0')
 soup_dep = dependency('libsoup-3.0')
 ws2_32_dep = cc.find_library('ws2_32', required : with_platform_windows)
 

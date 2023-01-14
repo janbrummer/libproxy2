@@ -1,6 +1,6 @@
 /* pacrunner-duktape.c
  *
- * Copyright 2022 Jan-Michael Brummer
+ * Copyright 2022-2023 Jan-Michael Brummer
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -19,6 +19,8 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 
+#include <libpeas/peas.h>
+
 #include <unistd.h>
 #ifdef __WIN32__
 #include <ws2tcpip.h>
@@ -29,23 +31,22 @@
 
 #include "pacrunner-duktape.h"
 #include "pacutils.h"
-#include "px-module.h"
-#include "px-pacrunner-module.h"
+#include "px-plugin-pacrunner.h"
 
 #include "duktape.h"
 
-struct _PxDuktapeModule {
+struct _PxPacRunnerDuktape {
   GObject parent_instance;
   duk_context *ctx;
 };
 
-static void module_interface_init (gpointer g_iface,
-                                   gpointer data);
+static void px_pacrunner_iface_init (PxPacRunnerInterface *iface);
 
-G_DEFINE_TYPE_WITH_CODE (PxDuktapeModule, px_duktape_module,
-                         PX_TYPE_MODULE,
-                         G_IMPLEMENT_INTERFACE (PX_TYPE_PACRUNNER_MODULE, module_interface_init);
-                         );
+G_DEFINE_FINAL_TYPE_WITH_CODE (PxPacRunnerDuktape,
+                               px_pacrunner_duktape,
+                               G_TYPE_OBJECT,
+                               G_IMPLEMENT_INTERFACE (PX_TYPE_PACRUNNER, px_pacrunner_iface_init))
+
 
 static duk_ret_t
 dns_resolve (duk_context *ctx)
@@ -104,7 +105,7 @@ my_ip_address (duk_context *ctx)
 }
 
 static void
-px_duktape_module_init (PxDuktapeModule *self)
+px_pacrunner_duktape_init (PxPacRunnerDuktape *self)
 {
   self->ctx = duk_create_heap_default ();
   if (!self->ctx)
@@ -127,31 +128,32 @@ error:
 }
 
 static void
-px_duktape_dispose (GObject *object)
+px_pacrunner_duktape_dispose (GObject *object)
 {
-  PxDuktapeModule *self = PX_DUKTAPE_MODULE (object);
+  PxPacRunnerDuktape *self = PX_PACRUNNER_DUKTAPE (object);
 
   g_clear_pointer (&self->ctx, duk_destroy_heap);
 
-  G_OBJECT_CLASS (px_duktape_module_parent_class)->dispose (object);
+  G_OBJECT_CLASS (px_pacrunner_duktape_parent_class)->dispose (object);
 }
 
-
 static void
-px_duktape_module_class_init (PxDuktapeModuleClass *klass)
+px_pacrunner_duktape_class_init (PxPacRunnerDuktapeClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
   /* object_class->constructed = px_duktape_constructed; */
-  object_class->dispose = px_duktape_dispose;
+  object_class->dispose = px_pacrunner_duktape_dispose;
 }
 
-void
-px_duktape_set_pac (PxModule   *px_module,
-                    const char *pac)
+static void
+px_pacrunner_duktape_set_pac (PxPacRunner *pacrunner,
+                              const char  *pac)
 {
-  PxDuktapeModule *self = PX_DUKTAPE_MODULE (px_module);
+  PxPacRunnerDuktape *self = PX_PACRUNNER_DUKTAPE (pacrunner);
 
+
+  g_print ("%s: ENTER\n", __FUNCTION__);
   duk_push_string (self->ctx, pac);
 
   if (duk_peval_noresult (self->ctx)) {
@@ -159,11 +161,11 @@ px_duktape_set_pac (PxModule   *px_module,
   }
 }
 
-char *
-px_duktape_run (PxModule *px_module,
-                GUri     *uri)
+static char *
+px_pacrunner_duktape_run (PxPacRunner *pacrunner,
+                          GUri        *uri)
 {
-  PxDuktapeModule *self = PX_DUKTAPE_MODULE (px_module);
+  PxPacRunnerDuktape *self = PX_PACRUNNER_DUKTAPE (pacrunner);
   duk_int_t result;
 
   g_print ("%s: ENTER\n", __FUNCTION__);
@@ -173,6 +175,7 @@ px_duktape_run (PxModule *px_module,
   duk_push_string (self->ctx, g_uri_get_host (uri));
   result = duk_pcall (self->ctx, 2);
 
+  g_print ("%s: result %d\n", __FUNCTION__, result);
   if (result == 0) {
     const char *proxy = duk_get_string (self->ctx, 0);
     char *proxy_string;
@@ -186,6 +189,7 @@ px_duktape_run (PxModule *px_module,
 
     duk_pop (self->ctx);
 
+    g_print ("%s: ret %s\n", __FUNCTION__, proxy_string);
     return proxy_string;
   }
 
@@ -194,20 +198,16 @@ px_duktape_run (PxModule *px_module,
 }
 
 static void
-module_interface_init (gpointer g_iface,
-                       gpointer data)
+px_pacrunner_iface_init (PxPacRunnerInterface *iface)
 {
-  PxPacrunnerModuleInterface *iface = g_iface;
-
-  iface->name = "Duktape";
-  iface->version = 1;
-
-  iface->set_pac = px_duktape_set_pac;
-  iface->run = px_duktape_run;
+  iface->set_pac = px_pacrunner_duktape_set_pac;
+  iface->run = px_pacrunner_duktape_run;
 }
 
-PxModule *
-px_module_create (void)
+void
+peas_register_types (PeasObjectModule *module)
 {
-  return g_object_new (PX_TYPE_DUKTAPE_MODULE, NULL);
+  peas_object_module_register_extension_type (module,
+                                              PX_TYPE_PACRUNNER,
+                                              PX_PACRUNNER_TYPE_DUKTAPE);
 }

@@ -19,13 +19,13 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 
-#include <glib-object.h>
+#include <libpeas/peas.h>
+#include <glib.h>
 
 #include "config-gnome.h"
-#include "px-module.h"
-#include "px-config-module.h"
+#include "px-plugin-config.h"
 
-struct _PxGnomeModule {
+struct _PxConfigGnome {
   GObject parent_instance;
   GSettings *proxy_settings;
 };
@@ -34,13 +34,12 @@ enum {
   GNOME_PROXY_MODE_AUTO = 2
 };
 
-static void module_interface_init (gpointer g_iface,
-                                   gpointer data);
+static void px_config_iface_init (PxConfigInterface *iface);
 
-G_DEFINE_TYPE_WITH_CODE (PxGnomeModule, px_gnome_module,
-                         PX_TYPE_MODULE,
-                         G_IMPLEMENT_INTERFACE (PX_TYPE_CONFIG_MODULE, module_interface_init);
-                         );
+G_DEFINE_FINAL_TYPE_WITH_CODE (PxConfigGnome,
+                               px_config_gnome,
+                               G_TYPE_OBJECT,
+                               G_IMPLEMENT_INTERFACE (PX_TYPE_CONFIG, px_config_iface_init))
 
 static void
 on_proxy_settings_changed (GSettings *self,
@@ -56,24 +55,24 @@ on_proxy_settings_changed (GSettings *self,
   if (mode == 2) {
     server = g_settings_get_string (self, "autoconfig-url");
   } else {
-    server = g_strdup ("http://moep");
+    server = g_strdup ("");
   }
 
   g_print ("Server: %s\n", server);
 }
 
 static void
-px_gnome_module_init (PxGnomeModule *self)
+px_config_gnome_init (PxConfigGnome *self)
 {
 }
 
 static void
-px_gnome_module_class_init (PxGnomeModuleClass *klass)
+px_config_gnome_class_init (PxConfigGnomeClass *klass)
 {
 }
 
 static gboolean
-gnome_check_available (void)
+px_config_gnome_is_available (PxConfig *config)
 {
   return (g_getenv ("GNOME_DESKTOP_SESSION_ID") ||
           (g_strcmp0 (g_getenv ("DESKTOP_SESSION"), "gnome") == 0) ||
@@ -81,11 +80,11 @@ gnome_check_available (void)
 }
 
 static GStrv
-gnome_get_config (PxModule  *module,
-                  GUri      *uri,
-                  GError   **error)
+px_config_gnome_get_config (PxConfig  *config,
+                            GUri      *uri,
+                            GError   **error)
 {
-  PxGnomeModule *self = PX_GNOME_MODULE (module);
+  PxConfigGnome *self = PX_CONFIG_GNOME (config);
   GStrv ret = NULL;
   int mode;
   g_autofree char *server = NULL;
@@ -116,19 +115,16 @@ gnome_get_config (PxModule  *module,
 }
 
 static void
-module_interface_init (gpointer g_iface,
-                       gpointer data)
+px_config_iface_init (PxConfigInterface *iface)
 {
-  PxConfigModuleInterface *iface = g_iface;
-
-  iface->name = "GNOME";
-  iface->version = 1;
-  iface->check_available = gnome_check_available;
-  iface->get_config = gnome_get_config;
+  iface->is_available = px_config_gnome_is_available;
+  iface->get_config = px_config_gnome_get_config;
 }
 
-PxModule *
-px_module_create (void)
+void
+peas_register_types (PeasObjectModule *module)
 {
-  return g_object_new (PX_TYPE_GNOME_MODULE, NULL);
+  peas_object_module_register_extension_type (module,
+                                              PX_TYPE_CONFIG,
+                                              PX_CONFIG_TYPE_GNOME);
 }

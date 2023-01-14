@@ -1,8 +1,17 @@
 api_version = '1.0'
 
-libproxy_sources = [
+src_inc = include_directories('.')
+
+libproxy_sources = []
+if get_option('dbus')
+libproxy_sources += [
+  'proxy-dbus.c',
+]
+else
+  libproxy_sources += [
   'proxy.c',
 ]
+endif
 
 libproxy_headers = [
   'proxy.h',
@@ -13,10 +22,11 @@ libproxy_deps = [
   gio_dep,
 ]
 
-src_inc = include_directories('.')
 
 libproxy_lib = shared_library('proxy-' + api_version,
   libproxy_sources,
+  link_with: px_backend_lib,
+  include_directories: px_backend_inc,
   dependencies: libproxy_deps,
        install: true,
 )

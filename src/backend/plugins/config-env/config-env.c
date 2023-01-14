@@ -19,44 +19,45 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 
-#include <glib-object.h>
+#include <libpeas/peas.h>
 
 #include "config-env.h"
-#include "px-module.h"
-#include "px-config-module.h"
 
-struct _PxEnvModule {
+#include "px-plugin-config.h"
+#include "px-manager.h"
+
+struct _PxConfigEnv {
   GObject parent_instance;
 };
 
-static void module_interface_init (gpointer g_iface,
-                                   gpointer data);
+static void px_config_iface_init (PxConfigInterface *iface);
 
-G_DEFINE_TYPE_WITH_CODE (PxEnvModule, px_env_module,
-                         PX_TYPE_MODULE,
-                         G_IMPLEMENT_INTERFACE (PX_TYPE_CONFIG_MODULE, module_interface_init);
-                         );
+G_DEFINE_FINAL_TYPE_WITH_CODE (PxConfigEnv,
+                               px_config_env,
+                               G_TYPE_OBJECT,
+                               G_IMPLEMENT_INTERFACE (PX_TYPE_CONFIG, px_config_iface_init))
 
 static void
-px_env_module_init (PxEnvModule *self)
+px_config_env_init (PxConfigEnv *self)
 {
 }
 
 static void
-px_env_module_class_init (PxEnvModuleClass *klass)
+px_config_env_class_init (PxConfigEnvClass *klass)
 {
 }
 
 static gboolean
-env_check_available (void)
+px_config_env_is_available (PxConfig *self)
 {
+  g_print ("%s: ENTER\n", __FUNCTION__);
   return TRUE;
 }
 
-static GStrv
-env_get_config (PxModule  *px_module,
-                GUri      *uri,
-                GError   **error)
+static char **
+px_config_env_get_config (PxConfig  *self,
+                          GUri      *uri,
+                          GError   **error)
 {
   g_auto (GStrv) ret = NULL;
   const char *proxy = NULL;
@@ -87,7 +88,7 @@ env_get_config (PxModule  *px_module,
   }
 
   if (!proxy && error) {
-    g_set_error (error, PX_MODULE_ERROR, PX_MODULE_ERROR_CONFIGURATION, "Unable to read environment configuration");
+    /* g_set_error (error, PEAS_PLUGIN_INFO_ERROR, 1, "Unable to read environment configuration"); */
     return NULL;
   }
 
@@ -98,19 +99,16 @@ env_get_config (PxModule  *px_module,
 }
 
 static void
-module_interface_init (gpointer g_iface,
-                       gpointer data)
+px_config_iface_init (PxConfigInterface *iface)
 {
-  PxConfigModuleInterface *iface = g_iface;
-
-  iface->name = g_strdup ("Environment");
-  iface->version = 1;
-  iface->check_available = env_check_available;
-  iface->get_config = env_get_config;
+  iface->is_available = px_config_env_is_available;
+  iface->get_config = px_config_env_get_config;
 }
 
-PxModule *
-px_module_create (void)
+void
+peas_register_types (PeasObjectModule *module)
 {
-  return g_object_new (PX_TYPE_ENV_MODULE, NULL);
+  peas_object_module_register_extension_type (module,
+                                              PX_TYPE_CONFIG,
+                                              PX_CONFIG_TYPE_ENV);
 }

@@ -1,6 +1,6 @@
 /* main.c
  *
- * Copyright 2022 Jan-Michael Brummer
+ * Copyright 2022-2023 Jan-Michael Brummer
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -20,7 +20,6 @@
  */
 
 #include "px-manager.h"
-#include "px-module.h"
 #include "px-interface.h"
 
 #include <gio/gio.h>
@@ -63,8 +62,10 @@ handle_method_call (GDBusConnection       *connection,
 
   result = g_variant_builder_new (G_VARIANT_TYPE ("as"));
   if (proxies) {
-    for (idx = 0; proxies[idx]; idx++)
+    for (idx = 0; proxies[idx]; idx++) {
+      g_print ("Adding: %s\n", proxies[idx]);
       g_variant_builder_add (result, "s", proxies[idx]);
+    }
   }
 
   g_dbus_method_invocation_return_value (invocation,
