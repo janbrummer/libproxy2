@@ -14,14 +14,18 @@ option('dbus',
        type: 'boolean', value: true,
        description: 'Whether to build dbus service')
 
-option('plugin_config_env',
+option('config-env',
        type: 'boolean', value: true,
        description: 'Whether to build plugin for environment configuration')
 
-option('plugin_config_gnome',
+option('config-gnome',
        type: 'boolean', value: true,
        description: 'Whether to build plugin for GNOME configuration')
 
-option('plugin_pacrunner_duktape',
+option('config-windows',
+       type: 'boolean', value: true,
+       description: 'Whether to build plugin for Windows configuration')
+
+option('pacrunner-duktape',
        type: 'boolean', value: true,
        description: 'Whether to build plugin for PAC Runner Duktape')

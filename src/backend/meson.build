@@ -27,7 +27,7 @@ px_backend_lib = static_library('pxbackend',
 px_backend_lib_dyn = shared_library('pxbackend',
                                  px_backend_sources,
                                  dependencies: px_backend_deps,
-                                 install: false)
+                                 install: true)
 
 gnome = import('gnome')
 px_gir = gnome.generate_gir(px_backend_lib_dyn,
@@ -38,6 +38,12 @@ px_gir = gnome.generate_gir(px_backend_lib_dyn,
     identifier_prefix: 'Px',
              includes: [ 'Gio-2.0' ],
               install: true,
+)
+
+libpxbackend_dep = declare_dependency(
+  include_directories: px_backend_inc,
+  link_with: px_backend_lib_dyn,
+  dependencies: px_backend_deps
 )
 
 subdir('plugins')
@@ -76,8 +82,8 @@ if get_option('dbus')
   ]
 
   proxyd_deps = [
-    glib_dep
+    libpxbackend_dep
   ]
 
-  executable('proxyd', proxyd_sources, dependencies: proxyd_deps, link_with: px_backend_lib, install: true)
+  executable('proxyd', proxyd_sources, dependencies: proxyd_deps, install: true)
 endif

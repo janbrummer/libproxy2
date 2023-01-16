@@ -1,29 +1,32 @@
-if get_option('plugin_config_gnome')
+plugin_name = 'config-gnome'
 
-plugin_c = [
-  'config-gnome.c',
+if get_option(plugin_name)
+
+plugin_src = [
+  '@0@.c'.format(plugin_name),
 ]
 
 plugin_data = [
-  'config-gnome.plugin',
+  '@0@.plugin'.format(plugin_name),
 ]
 
 plugin_lib = shared_module(
-  'config-gnome',
-  plugin_c,
+  plugin_name,
+  plugin_src,
   include_directories: px_backend_inc,
-  dependencies: [peas_dep],
-  install_dir: join_paths(px_module_dir, 'config-gnome'),
+  dependencies: [peas_dep, libpxbackend_dep],
+  install_dir: join_paths(px_plugins_dir, plugin_name),
   install: true,
 )
 
+# Starting with Meson 0.64 this can be replaced with fs.copyfile
 custom_target(
-  'lib@0@-data'.format('config-gnome'),
+  '@0@-data'.format(plugin_name),
   input: plugin_data,
   output: plugin_data,
-  command: [copyfile_script, '@INPUT@', '@OUTDIR@'],
+  command: ['cp', '@INPUT@', '@OUTDIR@'],
   build_by_default: true,
-  install_dir: join_paths(px_module_dir, 'config-gnome'),
+  install_dir: join_paths(px_plugins_dir, plugin_name),
   install: true,
 )
 
