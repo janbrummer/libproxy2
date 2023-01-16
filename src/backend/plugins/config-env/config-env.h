@@ -27,26 +27,12 @@
 G_BEGIN_DECLS
 
 #define PX_CONFIG_TYPE_ENV         (px_config_env_get_type ())
-#define PX_CONFIG_ENV(o)           (G_TYPE_CHECK_INSTANCE_CAST ((o), PX_CONFIG_TYPE_ENV, PxConfigEnv))
-#define PX_CONFIG_ENV_CLASS(k)     (G_TYPE_CHECK_CLASS_CAST((k), PX_CONFIG_TYPE_ENV, PxConfigEnv))
-#define PX_CONFIG_IS_ENV(o)        (G_TYPE_CHECK_INSTANCE_TYPE ((o), PX_CONFIG_TYPE_ENV))
-#define PX_CONFIG_IS_ENV_CLASS(k)  (G_TYPE_CHECK_CLASS_TYPE ((k), PX_CONFIG_TYPE_ENV))
-#define PX_CONFIG_ENV_GET_CLASS(o) (G_TYPE_INSTANCE_GET_CLASS ((o), PX_CONFIG_TYPE_ENV, PxConfigEnv))
 
-typedef struct _PxConfigEnv PxConfigEnv;
-typedef struct _PxConfigEnvClass PxConfigEnvClass;
+G_DECLARE_FINAL_TYPE (PxConfigEnv, px_config_env, PX, CONFIG_ENV, GObject)
 
 struct _PxConfigEnv {
-    PeasExtensionBase parent_instance;
+  GObject parent_instance;
 };
-
-struct _PxConfigEnvClass {
-    PeasExtensionBaseClass parent_class;
-};
-
-GType                 px_config_env_get_type        (void) G_GNUC_CONST;
-
-G_MODULE_EXPORT void  peas_register_types                         (PeasObjectModule *module);
 
 G_END_DECLS
 

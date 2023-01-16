@@ -26,20 +26,23 @@
 typedef struct {
   const char *env;
   const char *proxy;
+  const char *no_proxy;
   const char *url;
   gboolean success;
 } ConfigEnvTest;
 
 static const ConfigEnvTest config_env_test_set[] = {
-  { "HTTP_PROXY", "http://127.0.0.1:8080", "https://www.example.com", TRUE},
-  { "HTTP_PROXY", "http://127.0.0.1:8080", "http://www.example.com", TRUE},
-  { "HTTP_PROXY", "http://127.0.0.1:8080", "ftp://www.example.com", TRUE},
-  { "HTTPS_PROXY", "http://127.0.0.1:8080", "https://www.example.com", TRUE},
-  { "HTTPS_PROXY", "http://127.0.0.1:8080", "http://www.example.com", FALSE},
-  { "HTTPS_PROXY", "http://127.0.0.1:8080", "ftp://www.example.com", FALSE},
-  { "FTP_PROXY", "http://127.0.0.1:8080", "https://www.example.com", FALSE},
-  { "FTP_PROXY", "http://127.0.0.1:8080", "http://www.example.com", FALSE},
-  { "FTP_PROXY", "http://127.0.0.1:8080", "ftp://www.example.com", TRUE},
+  { "HTTP_PROXY", "http://127.0.0.1:8080", NULL, "https://www.example.com", TRUE},
+  { "HTTP_PROXY", "http://127.0.0.1:8080", NULL, "http://www.example.com", TRUE},
+  { "HTTP_PROXY", "http://127.0.0.1:8080", NULL, "ftp://www.example.com", TRUE},
+  { "HTTP_PROXY", "http://127.0.0.1:8080", "www.example.com", "https://www.example.com", FALSE},
+  { "HTTP_PROXY", "http://127.0.0.1:8080", "www.test.com", "https://www.example.com", TRUE},
+  { "HTTPS_PROXY", "http://127.0.0.1:8080", NULL, "https://www.example.com", TRUE},
+  { "HTTPS_PROXY", "http://127.0.0.1:8080", NULL, "http://www.example.com", FALSE},
+  { "HTTPS_PROXY", "http://127.0.0.1:8080", NULL, "ftp://www.example.com", FALSE},
+  { "FTP_PROXY", "http://127.0.0.1:8080", NULL, "https://www.example.com", FALSE},
+  { "FTP_PROXY", "http://127.0.0.1:8080", NULL, "http://www.example.com", FALSE},
+  { "FTP_PROXY", "http://127.0.0.1:8080", NULL, "ftp://www.example.com", TRUE},
 };
 
 static void
@@ -48,7 +51,7 @@ test_config_env (void)
   int idx;
 
   /* Overwrite libproxy configuration plugin */
-  g_setenv ("PX_CONFIG_PLUGIN", "config_env", TRUE);
+  g_setenv ("PX_CONFIG_PLUGIN", "config-env", TRUE);
 
   for (idx = 0; idx < G_N_ELEMENTS (config_env_test_set); idx++) {
     g_autoptr (PxManager) manager = NULL;
@@ -59,6 +62,8 @@ test_config_env (void)
 
     /* Set proxy environment variable. Must be done before px_test_manager_new()! */
     g_setenv (test.env, test.proxy, TRUE);
+    if (test.no_proxy)
+      g_setenv ("NO_PROXY", test.no_proxy, TRUE);
 
     manager = px_test_manager_new ();
     g_clear_error (&error);
@@ -70,16 +75,13 @@ test_config_env (void)
     }
 
     config = px_manager_get_configuration (manager, uri, &error);
-    /* GMainLoop *loop = g_main_loop_new (NULL, TRUE); */
-    /* g_main_loop_run(loop); */
-    if (config) {
-      if (test.success)
-        g_assert_cmpstr (config[0], ==, test.proxy);
-      else
-        g_assert_cmpstr (config[0], !=, test.proxy);
-    }
+    if (test.success)
+      g_assert_cmpstr (config[0], ==, test.proxy);
+    else
+      g_assert_cmpstr (config[0], !=, test.proxy);
 
     g_unsetenv (test.env);
+    g_unsetenv ("NO_PROXY");
     g_clear_object (&manager);
   }
 }

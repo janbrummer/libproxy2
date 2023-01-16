@@ -52,7 +52,6 @@ handle_method_call (GDBusConnection       *connection,
 
   g_variant_get (parameters, "(&s)", &url);
 
-  g_print ("%s: ENTER\n", __FUNCTION__);
   proxies = px_manager_get_proxies_sync (manager, url, &error);
   if (error) {
     g_warning ("Could not query proxy servers: %s", error->message);
@@ -63,7 +62,6 @@ handle_method_call (GDBusConnection       *connection,
   result = g_variant_builder_new (G_VARIANT_TYPE ("as"));
   if (proxies) {
     for (idx = 0; proxies[idx]; idx++) {
-      g_print ("Adding: %s\n", proxies[idx]);
       g_variant_builder_add (result, "s", proxies[idx]);
     }
   }

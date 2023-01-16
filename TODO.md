@@ -2,26 +2,14 @@
 
 ## Step 1
 - Architecture review
-    - Why network connectivity modules?
-        - Network changes for wpad, flushes cache and reforces pac download
-            nm module -> TODO
-
-    - Get Config vs Set Config on demand...
-        - Get Config due to wpad!
-
     - ZSCaler??
         config module
-    
-    - Performance:
-        Config loaded: 0.000065
-        PAC loaded   : 0.011883
-        PAC set      : 0.014091
-        PAC parsed   : 0.016664
-
     - Session to System Daemon communication?
     
     - icon?
         -> Dom fragt nach
+        
+    Windows Plugin: Finish & Test
 
 - Check error handling
 
@@ -32,6 +20,9 @@
 
 - Chemnitzer Linux Tage?
     -> Yes :)
+    
+ - GNOME plugin:
+    get_config mode extraction...
 
 ## Step 2
 - Add missing modules

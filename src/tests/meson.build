@@ -9,8 +9,7 @@ if get_option('tests')
   px_manager_test = executable('test-px-manager',
     ['px-manager-test.c', 'px-manager-helper.c'],
     include_directories: px_backend_inc,
-    link_with: px_backend_lib,
-    dependencies: [soup_dep, glib_dep],
+    dependencies: [soup_dep, glib_dep, libpxbackend_dep],
   )
   test('PX Manager test',
        px_manager_test,
@@ -20,8 +19,7 @@ if get_option('tests')
   config_env_test = executable('test-config-env',
     ['config-env-test.c', 'px-manager-helper.c'],
     include_directories: px_backend_inc,
-    link_with: px_backend_lib,
-    dependencies: [glib_dep],
+    dependencies: [glib_dep, libpxbackend_dep],
   )
   test('Config Environment test',
        config_env_test,
