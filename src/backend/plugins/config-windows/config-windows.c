@@ -60,7 +60,6 @@ px_config_windows_class_finalize (PxConfigWindowsClass *klass)
 static gboolean
 px_config_windows_is_available (PxConfig *self)
 {
-  g_print ("%s: ENTER\n", __FUNCTION__);
   return TRUE;
 }
 
@@ -148,7 +147,7 @@ px_config_windows_get_config (PxConfig  *self,
   /* PAC */
   if (is_enabled (W32REG_OFFSET_PAC) && get_registry (W32REG_BASEKEY, "AutoConfigURL", &tmp, NULL, NULL)) {
     g_autofree char *pac_uri = g_strconcat ("pac+", tmp, NULL);
-    GUri *ac_uri = g_uri_parsed (tmp, G_URI_FLAGS_RELAXED, NULL);
+    GUri *ac_uri = g_uri_parse (tmp, G_URI_FLAGS_PARSE_RELAXED, NULL);
 
     if (ac_uri) {
       g_strv_builder_add (builder, pac_uri);
