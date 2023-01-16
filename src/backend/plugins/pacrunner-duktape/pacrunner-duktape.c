@@ -149,13 +149,12 @@ px_pacrunner_duktape_class_init (PxPacRunnerDuktapeClass *klass)
 
 static void
 px_pacrunner_duktape_set_pac (PxPacRunner *pacrunner,
-                              const char  *pac)
+                              GBytes      *pac_data)
 {
   PxPacRunnerDuktape *self = PX_PACRUNNER_DUKTAPE (pacrunner);
 
 
-  g_print ("%s: ENTER\n", __FUNCTION__);
-  duk_push_string (self->ctx, pac);
+  duk_push_string (self->ctx, g_bytes_get_data (pac_data, NULL));
 
   if (duk_peval_noresult (self->ctx)) {
     return;
@@ -169,14 +168,11 @@ px_pacrunner_duktape_run (PxPacRunner *pacrunner,
   PxPacRunnerDuktape *self = PX_PACRUNNER_DUKTAPE (pacrunner);
   duk_int_t result;
 
-  g_print ("%s: ENTER\n", __FUNCTION__);
-
   duk_get_global_string (self->ctx, "FindProxyForURL");
   duk_push_string (self->ctx, g_uri_to_string (uri));
   duk_push_string (self->ctx, g_uri_get_host (uri));
   result = duk_pcall (self->ctx, 2);
 
-  g_print ("%s: result %d\n", __FUNCTION__, result);
   if (result == 0) {
     const char *proxy = duk_get_string (self->ctx, 0);
     char *proxy_string;
@@ -190,7 +186,6 @@ px_pacrunner_duktape_run (PxPacRunner *pacrunner,
 
     duk_pop (self->ctx);
 
-    g_print ("%s: ret %s\n", __FUNCTION__, proxy_string);
     return proxy_string;
   }
 

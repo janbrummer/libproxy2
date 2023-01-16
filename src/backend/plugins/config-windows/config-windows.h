@@ -26,30 +26,8 @@
 G_BEGIN_DECLS
 
 #define PX_CONFIG_TYPE_WINDOWS         (px_config_windows_get_type ())
-#define PX_CONFIG_WINDOWS(o)           (G_TYPE_CHECK_INSTANCE_CAST ((o), PX_CONFIG_TYPE_WINDOWS, PxConfigWindows))
-#define PX_CONFIG_WINDOWS_CLASS(k)     (G_TYPE_CHECK_CLASS_CAST((k), PX_CONFIG_TYPE_WINDOWS, PxConfigWindows))
-#define PX_CONFIG_IS_WINDOWS(o)        (G_TYPE_CHECK_INSTANCE_TYPE ((o), PX_CONFIG_TYPE_WINDOWS))
-#define PX_CONFIG_IS_WINDOWS_CLASS(k)  (G_TYPE_CHECK_CLASS_TYPE ((k), PX_CONFIG_TYPE_WINDOWS))
-#define PX_CONFIG_WINDOWS_GET_CLASS(o) (G_TYPE_INSTANCE_GET_CLASS ((o), PX_CONFIG_TYPE_WINDOWS, PxConfigWindows))
 
-typedef struct _PxConfigWindows PxConfigWindows;
-typedef struct _PxConfigWindowsClass PxConfigWindowsClass;
-
-
-struct _PxConfigWindows {
-    PeasExtensionBase parent_instance;
-};
-
-struct _PxConfigWindowsClass {
-    PeasExtensionBaseClass parent_class;
-};
-
-
-GType                 px_config_windows_get_type        (void) G_GNUC_CONST;
-
-
-G_MODULE_EXPORT void  peas_register_types                         (PeasObjectModule *module);
-// G_DECLARE_DYNAMIC_TYPE (PxConfigWindows, px_config_windows, PX, CONFIG_WINDOWS)
+G_DECLARE_FINAL_TYPE (PxConfigWindows, px_config_windows, PX, CONFIG_WINDOWS, GObject)
 
 G_END_DECLS
 

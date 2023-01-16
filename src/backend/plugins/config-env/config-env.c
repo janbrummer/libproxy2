@@ -27,12 +27,12 @@
 #include "px-manager.h"
 
 static void px_config_iface_init (PxConfigInterface *iface);
+G_MODULE_EXPORT void peas_register_types (PeasObjectModule *module);
 
-G_DEFINE_DYNAMIC_TYPE_EXTENDED (PxConfigEnv,
-                                px_config_env,
-                                PEAS_TYPE_EXTENSION_BASE,
-                                0,
-                                G_IMPLEMENT_INTERFACE_DYNAMIC (PX_TYPE_CONFIG, px_config_iface_init))
+G_DEFINE_FINAL_TYPE_WITH_CODE (PxConfigEnv,
+                               px_config_env,
+                               G_TYPE_OBJECT,
+                               G_IMPLEMENT_INTERFACE (PX_TYPE_CONFIG, px_config_iface_init))
 
 static void
 px_config_env_init (PxConfigEnv *self)
@@ -44,23 +44,18 @@ px_config_env_class_init (PxConfigEnvClass *klass)
 {
 }
 
-static void
-px_config_env_class_finalize (PxConfigEnvClass *klass)
-{
-}
-
 static gboolean
 px_config_env_is_available (PxConfig *self)
 {
   return TRUE;
 }
 
-static char **
-px_config_env_get_config (PxConfig  *self,
-                          GUri      *uri,
-                          GError   **error)
+static gboolean
+px_config_env_get_config (PxConfig      *self,
+                          GUri          *uri,
+                          GStrvBuilder  *builder,
+                          GError       **error)
 {
-  g_autoptr(GStrvBuilder) builder = g_strv_builder_new ();
   const char *proxy = NULL;
   const char *scheme = g_uri_get_scheme (uri);
   const char *ignore = NULL;
@@ -70,7 +65,7 @@ px_config_env_get_config (PxConfig  *self,
     ignore = g_getenv ("NO_PROXY");
 
   if (ignore && strstr (ignore, g_uri_get_host (uri)))
-    return g_strv_builder_end (builder);
+    return TRUE;
 
   if (g_strcmp0 (scheme, "ftp") == 0) {
     proxy = g_getenv ("ftp_proxy");
@@ -91,7 +86,7 @@ px_config_env_get_config (PxConfig  *self,
   if (proxy)
     g_strv_builder_add (builder, proxy);
 
-  return g_strv_builder_end (builder);
+  return TRUE;
 }
 
 static void
@@ -104,7 +99,6 @@ px_config_iface_init (PxConfigInterface *iface)
 G_MODULE_EXPORT void
 peas_register_types (PeasObjectModule *module)
 {
-  px_config_env_register_type (G_TYPE_MODULE (module));
   peas_object_module_register_extension_type (module,
                                               PX_TYPE_CONFIG,
                                               PX_CONFIG_TYPE_ENV);

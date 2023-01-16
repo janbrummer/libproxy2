@@ -16,7 +16,7 @@ plugin_lib = shared_module(
   plugin_name,
   plugin_src,
   include_directories: px_backend_inc,
-  dependencies: [peas_dep, libpxbackend_dep, duktape_dep],
+  dependencies: [peas_dep, libpxbackend_dep, duktape_dep, ws2_32_dep],
   install_dir: join_paths(px_plugins_dir, plugin_name),
   install: true,
 )

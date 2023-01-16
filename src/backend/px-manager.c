@@ -42,6 +42,7 @@ static GParamSpec *obj_properties[LAST_PROP];
  * Manage libproxy modules
  */
 
+/* TODO: Move to private structure */
 struct _PxManager {
   GObject parent_instance;
   PeasEngine *engine;
@@ -50,6 +51,12 @@ struct _PxManager {
   char *plugins_dir;
   GCancellable *cancellable;
   SoupSession *session;
+
+  gboolean wpad;
+  GBytes *pac_data;
+  char *pac_url;
+
+  const char *requested_config_plugin;
 };
 
 G_DEFINE_TYPE (PxManager, px_manager, G_TYPE_OBJECT)
@@ -158,6 +165,7 @@ px_manager_class_init (PxManagerClass *klass)
 static void
 px_manager_init (PxManager *self)
 {
+  self->requested_config_plugin = g_getenv ("PX_CONFIG_PLUGIN");
 }
 
 /**
@@ -195,9 +203,8 @@ px_manager_pac_download (PxManager  *self,
     msg,
     NULL,     /* Pass a GCancellable here if you want to cancel a download */
     &error);
-  if (!bytes) {
+  if (!bytes || soup_message_get_status (msg) != SOUP_STATUS_OK) {
     g_debug ("Failed to download: %s\n", error ? error->message : "");
-    g_warning ("Cannot download pac file: %s", error ? error->message : "");
     return NULL;
   }
 
@@ -205,6 +212,8 @@ px_manager_pac_download (PxManager  *self,
 }
 
 struct ConfigData {
+  GStrvBuilder *builder;
+  const char *requested_config;
   GUri *uri;
   char **ret;
   GError **error;
@@ -219,8 +228,11 @@ get_config (PeasExtensionSet *set,
   PxConfigInterface *ifc = PX_CONFIG_GET_IFACE (extension);
   struct ConfigData *config_data = data;
 
-  if (!config_data->ret)
-    config_data->ret = ifc->get_config (PX_CONFIG (extension), config_data->uri, config_data->error);
+  /* Check for testing explicit plugins */
+  if (config_data->requested_config && g_strcmp0 (config_data->requested_config, peas_plugin_info_get_module_name (info)) != 0)
+    return;
+
+  ifc->get_config (PX_CONFIG (extension), config_data->uri, config_data->builder, config_data->error);
 }
 
 /**
@@ -238,37 +250,105 @@ px_manager_get_configuration (PxManager  *self,
                               GUri       *uri,
                               GError    **error)
 {
-  struct ConfigData a = {
+  g_autoptr (GStrvBuilder) builder = g_strv_builder_new ();
+  struct ConfigData config_data = {
+    .requested_config = self->requested_config_plugin,
     .uri = uri,
+    .builder = builder,
     .error = error,
   };
 
-  peas_extension_set_foreach (self->config_set, get_config, &a);
-  return a.ret;
+  peas_extension_set_foreach (self->config_set, get_config, &config_data);
+
+  return g_strv_builder_end (builder);
 }
 
 struct PacData {
-  char *pac;
+  GBytes *pac;
   GUri *uri;
-  char *ret;
+  GStrvBuilder *builder;
 };
 
 static void
-parse_pac (PeasExtensionSet *set,
-           PeasPluginInfo   *info,
-           PeasExtension    *extension,
-           gpointer          data)
+px_manager_run_pac (PeasExtensionSet *set,
+                    PeasPluginInfo   *info,
+                    PeasExtension    *extension,
+                    gpointer          data)
 {
   PxPacRunnerInterface *ifc = PX_PAC_RUNNER_GET_IFACE (extension);
   struct PacData *pac_data = data;
-
-  g_print ("%s: ENTER\n", __FUNCTION__);
-
-  if (pac_data->ret)
-    return;
+  char *ret;
 
   ifc->set_pac (PX_PAC_RUNNER (extension), pac_data->pac);
-  pac_data->ret = ifc->run (PX_PAC_RUNNER (extension), pac_data->uri);
+  ret = ifc->run (PX_PAC_RUNNER (extension), pac_data->uri);
+  if (ret)
+    g_strv_builder_add (pac_data->builder, ret);
+}
+
+static gboolean
+px_manager_expand_wpad (PxManager *self,
+                        GUri      *uri)
+{
+  const char *scheme = g_uri_get_scheme (uri);
+  gboolean ret = FALSE;
+
+  if (g_strcmp0 (scheme, "wpad") == 0) {
+    ret = TRUE;
+
+    if (!self->wpad) {
+      g_clear_object (&self->pac_data);
+      g_clear_pointer (&self->pac_url, g_free);
+      self->wpad = TRUE;
+    }
+
+    if (!self->pac_data) {
+      GUri *wpad_url = g_uri_parse ("http://wpad/wpad.data", G_URI_FLAGS_PARSE_RELAXED, NULL);
+
+      g_print ("Trying to find the PAC using WPAD...\n");
+      self->pac_url = g_uri_to_string (wpad_url);
+      self->pac_data = px_manager_pac_download (self, self->pac_url);
+      if (!self->pac_data)
+        g_clear_object (&self->pac_url);
+    }
+  }
+
+  return ret;
+}
+
+static gboolean
+px_manager_expand_pac (PxManager *self,
+                       GUri      *uri)
+{
+  gboolean ret = FALSE;
+  const char *scheme = g_uri_get_scheme (uri);
+
+  if (g_str_has_prefix (scheme, "pac+")) {
+    ret = TRUE;
+
+    if (self->wpad)
+      self->wpad = FALSE;
+
+    if (self->pac_data) {
+      g_autofree char *uri_str = g_uri_to_string (uri);
+
+      if (g_strcmp0 (self->pac_url, uri_str) != 0) {
+        g_clear_pointer (&self->pac_url, g_free);
+        g_clear_object (&self->pac_data);
+      }
+    }
+
+    if (!self->pac_data) {
+      self->pac_url = g_uri_to_string (uri);
+      self->pac_data = px_manager_pac_download (self, self->pac_url);
+
+      if (!self->pac_data)
+        g_error ("Unable to download PAC!");
+      else
+        g_debug ("PAC recevied!\n");
+    }
+  }
+
+  return ret;
 }
 
 /**
@@ -286,54 +366,40 @@ px_manager_get_proxies_sync (PxManager   *self,
                              GError     **error)
 {
   /* GList *list; */
+  g_autoptr (GStrvBuilder) builder = g_strv_builder_new ();
   g_autoptr (GUri) uri = g_uri_parse (url, G_URI_FLAGS_PARSE_RELAXED, error);
   g_auto (GStrv) config = NULL;
-  g_auto (GStrv) ret = NULL;
-  char *pac;
-  GBytes *pac_bytes;
-  GTimer *timer;
-  struct PacData pac_data;
 
-  timer = g_timer_new ();
-  if (!uri)
-    return NULL;
+  if (!uri) {
+    g_strv_builder_add (builder, "direct://");
+    return g_strv_builder_end (builder);
+  }
 
+  /* TODO: Check topology */
   config = px_manager_get_configuration (self, uri, error);
-  if (!config)
-    return NULL;
 
-  /* ret = g_steal_pointer (&config); */
+  g_print ("Config is: ");
+  for (int idx = 0; idx < g_strv_length (config); idx++) {
+    GUri *conf_url = g_uri_parse (config[idx], G_URI_FLAGS_PARSE_RELAXED, NULL);
 
-  pac_bytes = px_manager_pac_download (self, config[0]);
-  pac = g_strdup (g_bytes_get_data (pac_bytes, NULL));
+    g_print ("%s ", config[idx]);
 
-  g_debug ("PAC loaded: %f\n", g_timer_elapsed (timer, NULL));
+    if (px_manager_expand_wpad (self, conf_url) || px_manager_expand_pac (self, conf_url)) {
+      struct PacData pac_data = {
+        .pac = self->pac_data,
+        .uri = uri,
+        .builder = builder,
+      };
+      peas_extension_set_foreach (self->pacrunner_set, px_manager_run_pac, &pac_data);
+    } else {
+      g_strv_builder_add (builder, g_uri_to_string (conf_url));
+    }
+  }
+  g_print ("\n");
 
-  pac_data.pac = pac;
-  pac_data.uri = uri;
-  pac_data.ret = NULL;
-  peas_extension_set_foreach (self->pacrunner_set, parse_pac, &pac_data);
-  /* for (list = self->modules; list && list->data; list = list->next) { */
-  /*   PxModule *module = PX_MODULE (list->data); */
+  /* In case no proxy could be found, assume direct connection */
+  if (((GPtrArray *)builder)->len == 0)
+    g_strv_builder_add (builder, "direct://");
 
-  /* First pacrunner module wins at the moment */
-  /*   if (PX_IS_PACRUNNER_MODULE (module)) { */
-  /*     PxPacrunnerModule *pacrunner_module = PX_PACRUNNER_MODULE (module); */
-  /*     PxPacrunnerModuleInterface *iface = PX_PACRUNNER_MODULE_GET_INTERFACE (pacrunner_module); */
-  /*     char *pac_ret; */
-
-  /*     iface->set_pac (module, pac); */
-  /*     g_debug ("PAC set: %f\n", g_timer_elapsed (timer, NULL)); */
-  /*     pac_ret = iface->run (module, uri); */
-
-  /*     ret = g_malloc0 (sizeof (char *) * 2); */
-  /*     ret[0] = g_strdup (pac_ret); */
-  /*     break; */
-  /*   } */
-  /* } */
-  g_print ("PAC parsed: %f\n", g_timer_elapsed (timer, NULL));
-  g_print ("Got: %s\n", pac_data.ret);
-  ret = g_malloc0 (sizeof (char *) * 2);
-  ret[0] = g_strdup (pac_data.ret);
-  return g_steal_pointer (&ret);
+  return g_strv_builder_end (builder);
 }
