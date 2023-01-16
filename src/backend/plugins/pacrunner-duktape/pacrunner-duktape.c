@@ -41,6 +41,7 @@ struct _PxPacRunnerDuktape {
 };
 
 static void px_pacrunner_iface_init (PxPacRunnerInterface *iface);
+void peas_register_types (PeasObjectModule *module);
 
 G_DEFINE_FINAL_TYPE_WITH_CODE (PxPacRunnerDuktape,
                                px_pacrunner_duktape,

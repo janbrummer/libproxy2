@@ -26,16 +26,13 @@
 #include "px-plugin-config.h"
 #include "px-manager.h"
 
-struct _PxConfigEnv {
-  GObject parent_instance;
-};
-
 static void px_config_iface_init (PxConfigInterface *iface);
 
-G_DEFINE_FINAL_TYPE_WITH_CODE (PxConfigEnv,
-                               px_config_env,
-                               G_TYPE_OBJECT,
-                               G_IMPLEMENT_INTERFACE (PX_TYPE_CONFIG, px_config_iface_init))
+G_DEFINE_DYNAMIC_TYPE_EXTENDED (PxConfigEnv,
+                                px_config_env,
+                                PEAS_TYPE_EXTENSION_BASE,
+                                0,
+                                G_IMPLEMENT_INTERFACE_DYNAMIC (PX_TYPE_CONFIG, px_config_iface_init))
 
 static void
 px_config_env_init (PxConfigEnv *self)
@@ -47,10 +44,14 @@ px_config_env_class_init (PxConfigEnvClass *klass)
 {
 }
 
+static void
+px_config_env_class_finalize (PxConfigEnvClass *klass)
+{
+}
+
 static gboolean
 px_config_env_is_available (PxConfig *self)
 {
-  g_print ("%s: ENTER\n", __FUNCTION__);
   return TRUE;
 }
 
@@ -59,7 +60,7 @@ px_config_env_get_config (PxConfig  *self,
                           GUri      *uri,
                           GError   **error)
 {
-  g_auto (GStrv) ret = NULL;
+  g_autoptr(GStrvBuilder) builder = g_strv_builder_new ();
   const char *proxy = NULL;
   const char *scheme = g_uri_get_scheme (uri);
   const char *ignore = NULL;
@@ -68,8 +69,8 @@ px_config_env_get_config (PxConfig  *self,
   if (!ignore)
     ignore = g_getenv ("NO_PROXY");
 
-  if (ignore && strstr(ignore, g_uri_get_host (uri)))
-    return g_steal_pointer (&ret);
+  if (ignore && strstr (ignore, g_uri_get_host (uri)))
+    return g_strv_builder_end (builder);
 
   if (g_strcmp0 (scheme, "ftp") == 0) {
     proxy = g_getenv ("ftp_proxy");
@@ -87,15 +88,10 @@ px_config_env_get_config (PxConfig  *self,
       proxy = g_getenv ("HTTP_PROXY");
   }
 
-  if (!proxy && error) {
-    /* g_set_error (error, PEAS_PLUGIN_INFO_ERROR, 1, "Unable to read environment configuration"); */
-    return NULL;
-  }
+  if (proxy)
+    g_strv_builder_add (builder, proxy);
 
-  ret = g_malloc0 (sizeof (char *) * 2);
-  ret[0] = g_strdup (proxy);
-
-  return g_steal_pointer (&ret);
+  return g_strv_builder_end (builder);
 }
 
 static void
@@ -105,9 +101,10 @@ px_config_iface_init (PxConfigInterface *iface)
   iface->get_config = px_config_env_get_config;
 }
 
-void
+G_MODULE_EXPORT void
 peas_register_types (PeasObjectModule *module)
 {
+  px_config_env_register_type (G_TYPE_MODULE (module));
   peas_object_module_register_extension_type (module,
                                               PX_TYPE_CONFIG,
                                               PX_CONFIG_TYPE_ENV);

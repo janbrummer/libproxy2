@@ -1,10 +1,12 @@
 subdir('config-env')
 subdir('config-gnome')
+subdir('config-windows')
 
 subdir('pacrunner-duktape')
 
 summary({
-  'Configuration Environment' : get_option('plugin_config_env'),
-  'Configuration GNOME      ' : get_option('plugin_config_gnome'),
-  'PAC Runner Duktape       ' : get_option('plugin_pacrunner_duktape'),
+  'Configuration Environment' : get_option('config-env'),
+  'Configuration GNOME      ' : get_option('config-gnome'),
+  'Configuration Windows    ' : get_option('config-windows'),
+  'PAC Runner Duktape       ' : get_option('pacrunner-duktape'),
 }, section: 'Plugins')

@@ -7,15 +7,14 @@ project('libproxy', 'c',
 cc = meson.get_compiler('c')
 
 root_dir = include_directories('.')
-copyfile_script = find_program('copyfile.py')
 
 px_prefix = get_option('prefix')
 px_libdir = join_paths(px_prefix, get_option('libdir'))
-px_module_dir = join_paths(px_libdir, meson.project_name().to_lower(), 'modules')
+px_plugins_dir = join_paths(px_libdir, meson.project_name().to_lower(), 'plugins')
 
 config_h = configuration_data()
 config_h.set_quoted('PACKAGE_VERSION', meson.project_version())
-config_h.set_quoted('PX_MODULE_DIR', px_module_dir)
+config_h.set_quoted('PX_PLUGINS_DIR', px_plugins_dir)
 configure_file(output: 'config.h', configuration: config_h)
 add_project_arguments(['-I' + meson.project_build_root()], language: 'c')
 

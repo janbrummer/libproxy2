@@ -35,6 +35,7 @@ enum {
 };
 
 static void px_config_iface_init (PxConfigInterface *iface);
+void peas_register_types (PeasObjectModule *module);
 
 G_DEFINE_FINAL_TYPE_WITH_CODE (PxConfigGnome,
                                px_config_gnome,

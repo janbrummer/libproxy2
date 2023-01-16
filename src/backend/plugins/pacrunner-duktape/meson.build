@@ -1,32 +1,34 @@
-if get_option('plugin_pacrunner_duktape')
+plugin_name = 'pacrunner-duktape'
+
+if get_option(plugin_name)
 
 duktape_dep = dependency('duktape')
 
-plugin_c = [
-  'pacrunner-duktape.c',
+plugin_src = [
+  '@0@.c'.format(plugin_name),
 ]
 
 plugin_data = [
-  'pacrunner-duktape.plugin',
+  '@0@.plugin'.format(plugin_name),
 ]
 
 plugin_lib = shared_module(
-  'pacrunner-duktape',
-  plugin_c,
+  plugin_name,
+  plugin_src,
   include_directories: px_backend_inc,
-  # link_with: px_backend_lib,
-  dependencies: [peas_dep, duktape_dep],
-  install_dir: join_paths(px_module_dir, 'pacrunner-duktape'),
+  dependencies: [peas_dep, libpxbackend_dep, duktape_dep, ws2_32_dep],
+  install_dir: join_paths(px_plugins_dir, plugin_name),
   install: true,
 )
 
+# Starting with Meson 0.64 this can be replaced with fs.copyfile
 custom_target(
-  'lib@0@-data'.format('pacrunner-duktape'),
+  '@0@-data'.format(plugin_name),
   input: plugin_data,
   output: plugin_data,
-  command: [copyfile_script, '@INPUT@', '@OUTDIR@'],
+  command: ['cp', '@INPUT@', '@OUTDIR@'],
   build_by_default: true,
-  install_dir: join_paths(px_module_dir, 'pacrunner-duktape'),
+  install_dir: join_paths(px_plugins_dir, plugin_name),
   install: true,
 )
 
