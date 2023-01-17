@@ -55,8 +55,6 @@ struct _PxManager {
   gboolean wpad;
   GBytes *pac_data;
   char *pac_url;
-
-  const char *requested_config_plugin;
 };
 
 G_DEFINE_TYPE (PxManager, px_manager, G_TYPE_OBJECT)
@@ -68,6 +66,7 @@ px_manager_constructed (GObject *object)
 {
   PxManager *self = PX_MANAGER (object);
   const GList *list;
+  const char *requested_config_plugin = g_getenv ("PX_CONFIG_PLUGIN");
 
   self->session = soup_session_new ();
 
@@ -83,8 +82,15 @@ px_manager_constructed (GObject *object)
     PeasExtension *extension = peas_extension_set_get_extension (self->config_set, info);
     gboolean available = TRUE;
 
-    if (!peas_plugin_info_is_loaded (info))
-      peas_engine_load_plugin (self->engine, info);
+    if (!peas_plugin_info_is_loaded (info)) {
+      /* In case user requested a specific module, just load that one */
+      if (requested_config_plugin) {
+        if (g_strcmp0 (peas_plugin_info_get_module_name (info), requested_config_plugin) == 0)
+          peas_engine_load_plugin (self->engine, info);
+      } else {
+        peas_engine_load_plugin (self->engine, info);
+      }
+    }
 
     extension = peas_extension_set_get_extension (self->config_set, info);
     if (extension) {
@@ -165,7 +171,6 @@ px_manager_class_init (PxManagerClass *klass)
 static void
 px_manager_init (PxManager *self)
 {
-  self->requested_config_plugin = g_getenv ("PX_CONFIG_PLUGIN");
 }
 
 /**
@@ -213,9 +218,7 @@ px_manager_pac_download (PxManager  *self,
 
 struct ConfigData {
   GStrvBuilder *builder;
-  const char *requested_config;
   GUri *uri;
-  char **ret;
   GError **error;
 };
 
@@ -228,10 +231,7 @@ get_config (PeasExtensionSet *set,
   PxConfigInterface *ifc = PX_CONFIG_GET_IFACE (extension);
   struct ConfigData *config_data = data;
 
-  /* Check for testing explicit plugins */
-  if (config_data->requested_config && g_strcmp0 (config_data->requested_config, peas_plugin_info_get_module_name (info)) != 0)
-    return;
-
+  g_print ("%s: plugin %s\n", __FUNCTION__, peas_plugin_info_get_module_name (info));
   ifc->get_config (PX_CONFIG (extension), config_data->uri, config_data->builder, config_data->error);
 }
 
@@ -252,7 +252,6 @@ px_manager_get_configuration (PxManager  *self,
 {
   g_autoptr (GStrvBuilder) builder = g_strv_builder_new ();
   struct ConfigData config_data = {
-    .requested_config = self->requested_config_plugin,
     .uri = uri,
     .builder = builder,
     .error = error,

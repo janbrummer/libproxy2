@@ -6,10 +6,6 @@ option('tests',
        type: 'boolean', value: true,
        description: 'Whether to compile test cases for libproxy')
 
-option('introspection',
-       type: 'boolean', value: true,
-       description: 'Whether to use gobject introspection')
-
 option('dbus',
        type: 'boolean', value: true,
        description: 'Whether to build dbus service')
@@ -25,6 +21,14 @@ option('config-gnome',
 option('config-windows',
        type: 'boolean', value: true,
        description: 'Whether to build plugin for Windows configuration')
+
+option('config-sysconfig',
+       type: 'boolean', value: true,
+       description: 'Whether to build plugin for sysconfig configuration')
+
+option('config-osx',
+       type: 'boolean', value: true,
+       description: 'Whether to build plugin for OS X configuration')
 
 option('pacrunner-duktape',
        type: 'boolean', value: true,
