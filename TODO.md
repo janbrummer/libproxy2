@@ -10,6 +10,8 @@
         -> Dom fragt nach
         
     Windows Plugin: Finish & Test
+    
+    SysConfig Plugin: File monitor
 
 - Check error handling
 

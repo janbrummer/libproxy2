@@ -3,6 +3,7 @@ api_version = '1.0'
 src_inc = include_directories('.')
 
 libproxy_sources = []
+
 if get_option('dbus')
 libproxy_sources += [
   'proxy-dbus.c',
@@ -22,13 +23,18 @@ libproxy_deps = [
   gio_dep,
 ]
 
-
 libproxy_lib = shared_library('proxy-' + api_version,
   libproxy_sources,
   link_with: px_backend_lib,
   include_directories: px_backend_inc,
   dependencies: libproxy_deps,
        install: true,
+)
+
+libproxy_dep = declare_dependency (
+  include_directories: src_inc,
+  link_with: libproxy_lib,
+  dependencies: libproxy_deps
 )
 
 install_headers(libproxy_headers, subdir: 'libproxy')
@@ -45,7 +51,6 @@ pkg.generate(
   install_dir: join_paths(get_option('libdir'), 'pkgconfig')
 )
 
-if get_option('introspection')
 gnome = import('gnome')
 libproxy_gir = gnome.generate_gir(libproxy_lib,
               sources: libproxy_headers + libproxy_sources,
@@ -56,4 +61,3 @@ libproxy_gir = gnome.generate_gir(libproxy_lib,
              includes: [ 'Gio-2.0' ],
               install: true,
 )
-endif
