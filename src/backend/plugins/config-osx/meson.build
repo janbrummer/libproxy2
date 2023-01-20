@@ -1,6 +1,6 @@
 plugin_name = 'config-osx'
 
-if host_machine.system() == 'mac'
+if host_machine.system() == 'darwin'
 
 if get_option(plugin_name)
 

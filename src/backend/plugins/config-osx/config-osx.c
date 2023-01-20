@@ -61,7 +61,7 @@ getobj (CFDictionaryRef  settings,
   if (!settings)
     return NULL;
 
-  k = CFStringCreateWithCString (NULL, key.c_str(), kCFStringEncodingMacRoman);
+  k = CFStringCreateWithCString (NULL, key, kCFStringEncodingMacRoman);
   if (!k)
     return NULL;
 
@@ -76,7 +76,7 @@ getint (CFDictionaryRef  settings,
         char            *key,
         int64_t         *answer)
 {
-  CFNumberRef n = getobj<CFNumberRef>(settings, key);
+  CFNumberRef n = getobj (settings, key);
 
   if (!n)
     return FALSE;
@@ -93,7 +93,7 @@ getbool (CFDictionaryRef  settings,
 {
   int64_t i;
 
-  if (!getint(settings, key, i))
+  if (!getint(settings, key, &i))
     return FALSE;
 
   return i != 0;
