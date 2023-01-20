@@ -1,5 +1,11 @@
 proxy_sources = [
-	'proxy.c'
+  'proxy.c'
 ]
 
-executable('proxy', proxy_sources, dependencies: libproxy_dep, install: true, include_directories: src_inc)
+executable(
+  'proxy',
+  sources: proxy_sources,
+  dependencies: libproxy_dep,
+  install: true,
+  include_directories: libproxy_inc
+)

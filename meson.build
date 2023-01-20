@@ -99,11 +99,19 @@ if host_machine.system() == 'windows'
 endif
 with_platform_windows = _platforms.contains('windows')
 
+module_suffix = []
+# Keep the autotools convention for shared module suffix because GModule
+# depends on it.
+if ['darwin', 'ios'].contains(host_system)
+  module_suffix = 'so'
+endif
+
 glib_dep = dependency('glib-2.0', version: '>= 2.71.3')
 gio_dep = dependency('gio-2.0', version: '>= 2.71.3')
 peas_dep = dependency('libpeas-1.0')
 soup_dep = dependency('libsoup-3.0')
 ws2_32_dep = cc.find_library('ws2_32', required : with_platform_windows)
+gsettings_desktop_schema = dependency('gsettings-desktop-schemas', required: get_option('config-gnome'))
 
 subdir('src')
 subdir('docs')

@@ -13,17 +13,12 @@ px_toml = configure_file(
   configuration: toml_data
 )
 
-dependency('gi-docgen', version: '>= 2021.1',
-           fallback: ['gi-docgen', 'dummy_dep'],
-           native: true,
-)
-
 gidocgen = find_program('gi-docgen')
 
 docs_dir = datadir / 'doc'
 
 custom_target('px-doc',
-  input: [ px_toml, px_gir[0] ],
+  input: [ px_toml, px_backend_gir[0] ],
   output: 'px-@0@'.format(apiversion),
   command: [
     gidocgen,

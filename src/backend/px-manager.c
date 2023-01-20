@@ -231,7 +231,7 @@ get_config (PeasExtensionSet *set,
   PxConfigInterface *ifc = PX_CONFIG_GET_IFACE (extension);
   struct ConfigData *config_data = data;
 
-  g_print ("%s: plugin %s\n", __FUNCTION__, peas_plugin_info_get_module_name (info));
+  g_print ("%s: Asking plugin '%s' for configuration\n", __FUNCTION__, peas_plugin_info_get_module_name (info));
   ifc->get_config (PX_CONFIG (extension), config_data->uri, config_data->builder, config_data->error);
 }
 
@@ -377,11 +377,11 @@ px_manager_get_proxies_sync (PxManager   *self,
   /* TODO: Check topology */
   config = px_manager_get_configuration (self, uri, error);
 
-  g_print ("Config is: ");
+  g_print ("Config is:\n");
   for (int idx = 0; idx < g_strv_length (config); idx++) {
     GUri *conf_url = g_uri_parse (config[idx], G_URI_FLAGS_PARSE_RELAXED, NULL);
 
-    g_print ("%s ", config[idx]);
+    g_print ("\t- %s\n", config[idx]);
 
     if (px_manager_expand_wpad (self, conf_url) || px_manager_expand_pac (self, conf_url)) {
       struct PacData pac_data = {
@@ -394,7 +394,6 @@ px_manager_get_proxies_sync (PxManager   *self,
       g_strv_builder_add (builder, g_uri_to_string (conf_url));
     }
   }
-  g_print ("\n");
 
   /* In case no proxy could be found, assume direct connection */
   if (((GPtrArray *)builder)->len == 0)

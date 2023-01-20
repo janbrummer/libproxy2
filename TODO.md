@@ -25,6 +25,10 @@
     
  - GNOME plugin:
     get_config mode extraction...
+    
+ - gi-docgen broken in msys2
+   Fatal error in launcher: Unable to find an appended archive.
+   https://github.com/msys2/MINGW-packages/pull/15171
 
 ## Step 2
 - Add missing modules
