@@ -44,7 +44,6 @@ struct px_proxy_factory {
 struct px_proxy_factory *
 px_proxy_factory_new (void)
 {
-  g_autoptr (GError) error = NULL;
   struct px_proxy_factory *self = g_malloc0 (sizeof (struct px_proxy_factory));
 
   self->cancellable = g_cancellable_new ();
@@ -57,42 +56,16 @@ char **
 px_proxy_factory_get_proxies (struct px_proxy_factory *self,
                               const char              *url)
 {
-  g_autoptr (GVariant) result = NULL;
+  g_auto (GStrv) result = NULL;
   g_autoptr (GError) error = NULL;
-  g_autoptr (GVariantIter) iter = NULL;
-  g_autoptr (GList) list = NULL;
-  GList *tmp;
-  char *str;
-  char **retval;
-  gsize len;
-  gsize idx;
 
+  result = px_manager_get_proxies_sync (self->manager, url, &error);
   if (!result) {
-    g_warning ("Could not query proxy dbus: %s", error ? error->message : "");
+    g_warning ("Could not query proxy: %s", error ? error->message : "");
     return NULL;
   }
 
-  g_variant_get (result, "(as)", &iter);
-
-  while (g_variant_iter_loop (iter, "&s", &str)) {
-    list = g_list_prepend (list, g_strdup (str));
-  }
-
-  len = g_list_length (list);
-  if (len == 0) {
-    retval = g_malloc0 (sizeof (char *) * 2);
-    retval[0] = g_strdup ("direct://");
-
-    return retval;
-  }
-
-  retval = g_malloc0 (sizeof (char *) * (len + 1));
-  for (tmp = list, idx = 0; tmp && tmp->data; tmp = tmp->next, idx++) {
-    char *value = tmp->data;
-    retval[idx] = g_strdup (value);
-  }
-
-  return retval;
+  return g_steal_pointer (&result);
 }
 
 void
