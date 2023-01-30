@@ -59,7 +59,9 @@ if get_option('dbus')
   service = configure_file(
     input: 'proxyd.service.in',
     output: 'proxyd.service',
-    configuration: service_data
+    configuration: service_data,
+    install_dir: join_paths(datadir, 'dbus-1', 'interfaces'),
+    install: true
   )
 
   if unitdir != ''
