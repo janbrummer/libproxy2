@@ -24,10 +24,11 @@ libproxy_deps = [
 ]
 
 libproxy_lib = shared_library(
-  'proxy-@0@'.format(api_version),
+  'proxy',
   libproxy_sources,
   include_directories: px_backend_inc,
   dependencies: libproxy_deps,
+  soversion: '1',
   install: true,
 )
 
