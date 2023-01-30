@@ -72,3 +72,24 @@ libproxy_gir = gnome.generate_gir(
   includes: [ 'Gio-2.0' ],
   install: true,
 )
+
+libproxy_glib_sources = [
+  libproxy_sources,
+  'proxy-glib.c',
+]
+
+libproxy_glib_deps = [
+  libproxy_dep,
+  glib_dep,
+]
+
+libproxy_glib_lib = shared_library(
+  'proxy-glib',
+  libproxy_glib_sources,
+  include_directories: px_backend_inc,
+  dependencies: libproxy_glib_deps,
+  link_args : vflag,
+  link_depends : mapfile,
+  soversion: '1',
+  install: true,
+)

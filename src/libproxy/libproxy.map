@@ -6,3 +6,9 @@ LIBPROXY_0.4.16 {
     px_proxy_factory_free;
 };
 
+LIBPROXY_0.5 {
+  global:
+    px_proxy_factory_get_proxies_async;
+} LIBPROXY_0.4.16;
+
+
