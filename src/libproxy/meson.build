@@ -70,5 +70,5 @@ libproxy_gir = gnome.generate_gir(
   symbol_prefix: 'libproxy',
   identifier_prefix: 'Libproxy',
   includes: [ 'Gio-2.0' ],
-  install: true,
+  install: false,
 )

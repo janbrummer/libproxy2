@@ -1,4 +1,5 @@
 subdir('backend')
+subdir('bindings')
 subdir('libproxy')
 subdir('tests')
 subdir('tools')
