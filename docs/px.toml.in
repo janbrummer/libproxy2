@@ -32,6 +32,7 @@ file_format = "{filename}#L{line}"
 
 [extra]
 content_files = [
+  "configuration-logic.md",
   "build-howto.md",
 ]
 
