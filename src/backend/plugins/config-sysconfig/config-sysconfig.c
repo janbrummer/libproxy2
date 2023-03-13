@@ -28,6 +28,8 @@
 
 struct _PxConfigSysConfig {
   GObject parent_instance;
+  GCancellable *cancellable;
+  GFileMonitor *monitor;
 
   char *proxy_file;
   char *config_option;
@@ -52,6 +54,21 @@ enum {
   PROP_0,
   PROP_CONFIG_OPTION
 };
+
+static void px_config_sysconfig_set_config_file (PxConfigSysConfig *self,
+                                                 const char        *config_file);
+
+static void
+on_file_changed (GFileMonitor      *monitor,
+                 GFile             *file,
+                 GFile             *other_file,
+                 GFileMonitorEvent  event_type,
+                 gpointer           user_data)
+{
+  PxConfigSysConfig *self = PX_CONFIG_SYSCONFIG (user_data);
+
+  px_config_sysconfig_set_config_file (self, g_file_get_path (file));
+}
 
 static
 void
@@ -86,6 +103,10 @@ px_config_sysconfig_set_config_file (PxConfigSysConfig *self,
   dstr = g_data_input_stream_new (G_INPUT_STREAM (istr));
   if (!dstr)
     return;
+
+  g_clear_object (&self->monitor);
+  self->monitor = g_file_monitor (file, G_FILE_MONITOR_NONE, self->cancellable, &error);
+  g_signal_connect_object (G_OBJECT (self->monitor), "changed", G_CALLBACK (on_file_changed), self, 0);
 
   do {
     g_clear_pointer (&line, g_free);
@@ -123,6 +144,7 @@ px_config_sysconfig_set_config_file (PxConfigSysConfig *self,
 static void
 px_config_sysconfig_init (PxConfigSysConfig *self)
 {
+  self->cancellable = g_cancellable_new ();
   px_config_sysconfig_set_config_file (self, NULL);
 }
 
